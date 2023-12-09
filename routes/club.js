@@ -38,6 +38,11 @@ router.put(
       }
 
       // If validation success - create new event
+      //check if the user is illuster or not
+      let userInteracting = await UserSchema.findById(req.existUser.id);
+      if (userInteracting.illuster === false)
+        return res.status(401).json("You are not an illustor.");
+
       //check if club already exists or not
       let alreadyClub = await ClubSchema.findOne({ clubName: clubName });
       if (alreadyClub) {
