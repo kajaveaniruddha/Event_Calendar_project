@@ -19,14 +19,20 @@ const UserSchema = new mongoose.Schema({
     required: true,
   },
   followingClubs: {
-    type: [String],
+    type: [mongoose.ObjectId],
   },
-  inc_clubs: [
+  included_in_clubs: [
     {
-      club: { type: String },
-      designation: ["member" || "vice-president" || "president" || "none"],
+      clubId: { type: mongoose.ObjectId, required: true },
+      designation: {
+        type: ["member" || "vice-president" || "president"],
+        default: "member",
+      },
     },
   ],
+  illuster: { type: Boolean, default: false },
+  admin: { type: Boolean, default: false },
+  eventsCreated: [mongoose.ObjectId],
 });
 
-module.exports = mongoose.model("user", UserSchema);
+module.exports = mongoose.model("users", UserSchema);

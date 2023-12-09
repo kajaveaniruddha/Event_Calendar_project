@@ -12,6 +12,10 @@ mongoose.connect(process.env.DB_CONNECT).then(()=>console.log("Connected to Data
 // routes will be implemented here
 const userRoutes = require("./routes/user");
 app.use('/',userRoutes);
+const eventRoutes = require("./routes/event");
+app.use('/',eventRoutes);
+const clubRoutes = require("./routes/club");
+app.use('/',clubRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

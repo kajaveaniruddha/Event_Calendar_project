@@ -7,42 +7,28 @@ const UserSchema = require("../models/userSchema");
 const ClubSchema = require("../models/clubSchema");
 
 // routes
-//get all events
-router.get("/allEvents", async (req, res) => {
+//get all clubs
+router.get("/allClubs", async (req, res) => {
   try {
-    const allEvents = await EventSchema.find();
-    allEvents.sort((a, b) => {
-      a.startTime - b.startTime;
-    });
-
+    const allClubs = await ClubSchema.find();
     // console.log("error",allTasks);
-    res.status(200).json(allEvents);
+    res.status(200).json(allClubs);
   } catch (error) {
     res.json(error);
   }
 });
 
-//add an event
+//add a club
 router.put(
-  "/addEvent/:clubId",
+  "/addClub",
   authUser,
   [
-    body("title", "min length is 2").isLength({ min: 2 }).escape(),
+    body("clubName", "min length is 2").isLength({ min: 2 }).escape(),
     body("description", "at least 5 characters").isLength({ min: 5 }).escape(),
-    body("startTime", "must be in format: YYYY-MM-DDTHH:mm:ss.000+05:00")
-      .isISO8601()
-      .toDate()
-      .escape(),
-    body("endTime", "must be in format: YYYY-MM-DDTHH:mm:ss.000+05:00")
-      .isISO8601()
-      .toDate()
-      .escape(),
-    body("venue", "at least 5 characters").isLength({ min: 5 }).escape(),
   ],
   async (req, res) => {
     try {
-      const { title, description, venue, startTime, endTime } = req.body;
-
+      const { clubName, description } = req.body;
       // If validation fails
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -52,39 +38,33 @@ router.put(
       }
 
       // If validation success - create new event
-      const newEvent = new EventSchema({
-        title,
-        description,
-        startTime,
-        endTime,
-        venue,
-        creator: req.existUser.id,
-        ofClub: req.params.clubId,
-      });
-      const clubExist = await ClubSchema.findById(req.params.clubId);
-      if (!clubExist) return res.status(404).json("Club not found.");
-      await newEvent.save();
-      await EventSchema.findByIdAndUpdate(
-        req.existUser.id,
-        {
-          $addToSet: {
-            ofClub: req.params.clubId,
-          },
-        },
-        { new: true }
-      );
+      //check if club already exists or not
+      let alreadyClub = await ClubSchema.findOne({ clubName: clubName });
+      if (alreadyClub) {
+        return res.status(400).json({ errors: "Club already exists" });
+      }
 
+      const newClub = new ClubSchema({
+        clubName,
+        description,
+        creator: req.existUser.id,
+      });
+
+      await newClub.save();
       await UserSchema.findByIdAndUpdate(
         req.existUser.id,
         {
           $addToSet: {
-            eventsCreated: newEvent.id,
+            followingClubs: newClub.id,
+            included_in_clubs: {
+              clubId: newClub.id,
+            },
           },
         },
         { new: true }
       );
 
-      res.status(200).json(newEvent);
+      res.status(200).json(newClub);
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -93,7 +73,7 @@ router.put(
 );
 
 //delete an event
-router.delete("/deleteEvent/:id", authUser, async (req, res) => {
+router.delete("/deleteClub/:id", authUser, async (req, res) => {
   try {
     // If validation fails
     const errors = validationResult(req);
@@ -102,27 +82,28 @@ router.delete("/deleteEvent/:id", authUser, async (req, res) => {
         errors: errors.array(),
       });
     }
-    let existEvent = await EventSchema.findById(req.params.id);
+    let existClub = await ClubSchema.findById(req.params.id);
     //if no task exists at given id
-    if (!existEvent) {
-      return res.status(404).json("No task found");
+    if (!existClub) {
+      return res.status(404).json("No club found");
     }
     //if user is unauthorized
-    if (existEvent.creator.toString() !== req.existUser.id) {
+    if (existClub.creator.toString() !== req.existUser.id) {
       return res.status(401).json("Unauthorized");
     }
-
-    await EventSchema.findByIdAndDelete(req.params.id);
+    await ClubSchema.findByIdAndDelete(req.params.id);
+    //removing from creator only
+    //need to work on removal from other users
     await UserSchema.findByIdAndUpdate(
       req.existUser.id,
       {
         $pull: {
-          eventsCreated: req.params.id,
+          included_in_clubs: { clubId: req.params.id },
         },
       },
       { new: true }
     );
-    res.status(200).json(`removed event ${req.params.id}`);
+    res.status(200).json(`removed club id: ${req.params.id}`);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });

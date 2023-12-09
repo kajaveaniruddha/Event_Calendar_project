@@ -15,7 +15,8 @@ router.put(
   [
     body("email", "Enter a valid email").isEmail().normalizeEmail(),
     body("name", "min length is 3").isLength({ min: 3 }).escape(),
-    body("password", "at least 5 characters").isLength({ min: 6 }).escape(),
+    body("password", "at least 6 characters").isLength({ min: 6 }).escape(),
+    body("institute_id", "at least 3 characters").isLength({ min: 3 }).escape(),
     //prevent HTML injection and Cross-Site Scripting (XSS) attacks by escaping special characters.
   ],
   async (req, res) => {
@@ -41,6 +42,7 @@ router.put(
         name: req.body.name,
         email: req.body.email,
         password: hashPass,
+        institute_id: req.body.institute_id,
       });
 
       //save new user
@@ -101,12 +103,24 @@ router.post(
       const authtoken = jwt.sign(payload, JWT_SECRET);
 
       // res.status(200).json("login success");
-      success = true;
-      res.status(200).json({ success, authtoken });
+      res.status(200).json(authtoken);
     } catch (error) {
       res.json(error);
     }
   }
 );
 
+//get all users except the one logged in
+router.get("/allusers", authUser, async (req, res) => {
+  try {
+    const userId = req.existUser.id;
+    const allUsers = await UserSchema.find({}).select("-password");
+
+    const filteredUsers = allUsers.filter(user => user._id.toString() !== userId);
+
+    res.status(200).json(filteredUsers);
+  } catch (error) {
+    res.json(error);
+  }
+});
 module.exports = router;
