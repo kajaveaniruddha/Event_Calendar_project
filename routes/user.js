@@ -131,7 +131,7 @@ router.get("/myData", authUser, async (req, res) => {
   try {
     const user = UserSchema.findById(existUser.id);
 
-    res.status(200).json(user).select(-"password");
+    res.status(200).json(user).select("-password");
   } catch (error) {
     res.json(error);
   }
