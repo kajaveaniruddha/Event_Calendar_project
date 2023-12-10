@@ -41,7 +41,7 @@ router.put(
       //check if the user is illuster or not
       let userInteracting = await UserSchema.findById(req.existUser.id);
       if (userInteracting.illuster === false)
-        return res.status(401).json("You are not an illustor.");
+        return res.status(401).json("You are not an illuster.");
 
       //check if club already exists or not
       let alreadyClub = await ClubSchema.findOne({ clubName: clubName });
@@ -87,28 +87,47 @@ router.delete("/deleteClub/:id", authUser, async (req, res) => {
         errors: errors.array(),
       });
     }
+
     let existClub = await ClubSchema.findById(req.params.id);
-    //if no task exists at given id
+
+    // If no club exists at the given id
     if (!existClub) {
       return res.status(404).json("No club found");
     }
-    //if user is unauthorized
+
+    // If the user is unauthorized
     if (existClub.creator.toString() !== req.existUser.id) {
       return res.status(401).json("Unauthorized");
     }
+
+    // Delete the club
     await ClubSchema.findByIdAndDelete(req.params.id);
-    //removing from creator only
-    //need to work on removal from other users
-    await UserSchema.findByIdAndUpdate(
-      req.existUser.id,
-      {
-        $pull: {
-          included_in_clubs: { clubId: req.params.id },
-        },
-      },
-      { new: true }
+
+    // Remove references to the club from users
+    await UserSchema.updateMany(
+      { "included_in_clubs.clubId": req.params.id },
+      { $pull: { included_in_clubs: { clubId: req.params.id } } }
     );
-    res.status(200).json(`removed club id: ${req.params.id}`);
+
+    //remove the clubs from followings
+    await UserSchema.updateMany(
+      { followingClubs: req.params.id },
+      { $pull: { followingClubs: req.params.id } }
+    );
+
+    // Delete events associated with the club
+    let deletedEvents = await EventSchema.deleteMany({ ofClub: req.params.id });
+
+    // Extract the IDs of the deleted events
+    let deletedEventIds = deletedEvents.map((event) => event._id);
+
+    // Remove the events from eventsCreated
+    await UserSchema.updateMany(
+      { eventsCreated: { $in: deletedEventIds } },
+      { $pull: { eventsCreated: { $in: deletedEventIds } } }
+    );
+    
+    res.status(200).json(`Removed club id: ${existClub.clubName}`);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });

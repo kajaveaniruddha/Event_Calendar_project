@@ -31,6 +31,9 @@ const EventSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    organisers:{
+      type:[mongoose.ObjectId],
+    }
   },
   {
     timestamps: true, // Add timestamps (createdAt and updatedAt)

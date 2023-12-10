@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { body, validationResult, check } = require("express-validator");
+const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "anygoodenoughstring";
@@ -10,7 +10,7 @@ const UserSchema = require("../models/userSchema");
 //routes
 
 //register user
-router.put(
+router.post(
   "/registerUser",
   [
     body("email", "Enter a valid email").isEmail().normalizeEmail(),
@@ -68,7 +68,7 @@ router.post(
   "/loginUser",
   [
     body("email", "Enter a valid email").isEmail(),
-    body("password", "password cannot be empty").isLength({ min: 6 }),
+    body("password", "password minimum length is 6").isLength({ min: 6 }),
   ],
   async (req, res) => {
     let success = false;
@@ -111,14 +111,27 @@ router.post(
 );
 
 //get all users except the one logged in
-router.get("/allusers", authUser, async (req, res) => {
+router.get("/allUsers", authUser, async (req, res) => {
   try {
     const userId = req.existUser.id;
     const allUsers = await UserSchema.find({}).select("-password");
 
-    const filteredUsers = allUsers.filter(user => user._id.toString() !== userId);
+    const filteredUsers = allUsers.filter(
+      (user) => user._id.toString() !== userId
+    );
 
     res.status(200).json(filteredUsers);
+  } catch (error) {
+    res.json(error);
+  }
+});
+
+//get all data if that user
+router.get("/myData", authUser, async (req, res) => {
+  try {
+    const user = UserSchema.findById(existUser.id);
+
+    res.status(200).json(user).select(-"password");
   } catch (error) {
     res.json(error);
   }
