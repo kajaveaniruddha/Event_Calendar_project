@@ -126,7 +126,7 @@ router.delete("/deleteClub/:id", authUser, async (req, res) => {
       { eventsCreated: { $in: deletedEventIds } },
       { $pull: { eventsCreated: { $in: deletedEventIds } } }
     );
-    
+
     res.status(200).json(`Removed club id: ${existClub.clubName}`);
   } catch (error) {
     console.error(error);
@@ -134,4 +134,57 @@ router.delete("/deleteClub/:id", authUser, async (req, res) => {
   }
 });
 
+//get the data of a specific club
+router.get("/clubData/:id", authUser, async (req, res) => {
+  try {
+    const club = await ClubSchema.findById(req.params.id);
+    if (!club) return res.status(404).json("club not found");
+    res.status(200).json(club);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//follow a club
+router.put("/follow/:Clubid", authUser, async (req, res) => {
+  try {
+    const club = await ClubSchema.findById(req.params.Clubid);
+    if (!club) return res.status(404).json("club not found");
+    const user = await UserSchema.findByIdAndUpdate(
+      req.existUser.id,
+      {
+        $addToSet: {
+          followingClubs: req.params.Clubid,
+        },
+      },
+      { new: true }
+    );
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//un-follow a club
+router.put("/unfollow/:Clubid", authUser, async (req, res) => {
+  try {
+    const club = await ClubSchema.findById(req.params.Clubid);
+    if (!club) return res.status(404).json("club not found");
+    const user = await UserSchema.findByIdAndUpdate(
+      req.existUser.id,
+      {
+        $pull: {
+          followingClubs: req.params.Clubid,
+        },
+      },
+      { new: true }
+    );
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 module.exports = router;

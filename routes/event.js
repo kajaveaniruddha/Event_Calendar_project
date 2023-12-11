@@ -12,11 +12,22 @@ router.get("/allEvents", async (req, res) => {
   try {
     const allEvents = await EventSchema.find();
     allEvents.sort((a, b) => {
-      a.startTime - b.startTime;
+      a.startTime > b.startTime;
     });
 
     // console.log("error",allEvents);
     res.status(200).json(allEvents);
+  } catch (error) {
+    res.json(error);
+  }
+});
+
+//get event data from eventID
+router.get("/eventData/:eventid", async (req, res) => {
+  try {
+    const eventData = await EventSchema.findById(req.params.eventid);
+    // console.log("error",allEvents);
+    res.status(200).json(eventData);
   } catch (error) {
     res.json(error);
   }

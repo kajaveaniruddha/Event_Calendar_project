@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "anygoodenoughstring";
 var authUser = require("../middleware/authUser");
 //import user model
 const UserSchema = require("../models/userSchema");
+const ClubSchema = require("../models/clubSchema");
 
 //routes
 
@@ -129,11 +130,13 @@ router.get("/allUsers", authUser, async (req, res) => {
 //get all data if that user
 router.get("/myData", authUser, async (req, res) => {
   try {
-    const user = UserSchema.findById(existUser.id);
-
-    res.status(200).json(user).select("-password");
+    const user = await UserSchema.findById(req.existUser.id).select("-password");
+    if (!user) return res.status(404).json("User not found");
+    // Send the user data as response, excluding the password field
+    res.status(200).json(user);
   } catch (error) {
     res.json(error);
   }
 });
+
 module.exports = router;
