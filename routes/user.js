@@ -8,6 +8,30 @@ var authUser = require("../middleware/authUser");
 const UserSchema = require("../models/userSchema");
 const ClubSchema = require("../models/clubSchema");
 
+
+var nodemailer = require('nodemailer');
+var transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'rantvalo525@gmail.com',
+    pass: 'Fly1009fly'
+  }
+});
+
+var mailOptions = {
+  from: 'youremail@gmail.com',
+  to: 'myfriend@yahoo.com, myotherfriend@yahoo.com',
+  subject: 'Sending Email using Node.js',
+  text: 'That was easy!'
+}
+
+transporter.sendMail(mailOptions, function(error, info){
+  if (error) {
+    console.log(error);
+  } else {
+    console.log('Email sent: ' + info.response);
+  }
+});
 //routes
 
 //register user
@@ -72,7 +96,6 @@ router.post(
     body("password", "password minimum length is 6").isLength({ min: 6 }),
   ],
   async (req, res) => {
-    let success = false;
     const { email, password } = req.body;
     try {
       const errors = validationResult(req);
@@ -130,7 +153,9 @@ router.get("/allUsers", authUser, async (req, res) => {
 //get all data if that user
 router.get("/myData", authUser, async (req, res) => {
   try {
-    const user = await UserSchema.findById(req.existUser.id).select("-password");
+    const user = await UserSchema.findById(req.existUser.id).select(
+      "-password"
+    );
     if (!user) return res.status(404).json("User not found");
     // Send the user data as response, excluding the password field
     res.status(200).json(user);

@@ -1,10 +1,20 @@
 const router = require("express").Router();
 var authUser = require("../middleware/authUser");
+var nodemailer = require("nodemailer");
 const { body, validationResult } = require("express-validator");
 //import event model
 const EventSchema = require("../models/eventSchema");
 const UserSchema = require("../models/userSchema");
 const ClubSchema = require("../models/clubSchema");
+
+//send mail
+var transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "aakajave@gmail.com",
+    pass: "rshzokllqhuuolrh",
+  },
+});
 
 // routes
 //get all events
@@ -99,7 +109,7 @@ router.put(
         { new: true }
       );
 
-      await UserSchema.findByIdAndUpdate(
+      const usersUpdated = await UserSchema.findByIdAndUpdate(
         req.existUser.id,
         {
           $addToSet: {
@@ -108,6 +118,23 @@ router.put(
         },
         { new: true }
       );
+      // send mail
+      for (let user in usersUpdated) {
+        var mailOptions = {
+          from: "aakajave@gmail.com",
+          to: `${user.email}`,
+          subject: `"New event from " ${clubExist.clubName}`,
+          text: `${clubExist.clubName} created a new event '\n' Title: ${title}'\n' Descirption: ${description}`,
+        };
+
+        transporter.sendMail(mailOptions, function (error, info) {
+          if (error) {
+            console.log(error);
+          } else {
+            console.log("Email sent: " + info.response);
+          }
+        });
+      }
 
       res.status(200).json(newEvent);
     } catch (error) {
