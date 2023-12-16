@@ -8,7 +8,6 @@ var authUser = require("../middleware/authUser");
 const UserSchema = require("../models/userSchema");
 const ClubSchema = require("../models/clubSchema");
 
-
 //routes
 
 //register user
@@ -133,9 +132,23 @@ router.get("/myData", authUser, async (req, res) => {
     const user = await UserSchema.findById(req.existUser.id).select(
       "-password"
     );
-    if (!user) return res.status(404).json("User not found");
+    // Use Promise.all to handle asynchronous operations inside map
+    const IncludedInClubs = await Promise.all(
+      user.included_in_clubs.map(async (club) => {
+        const includedInClubNames = await ClubSchema.findById(club.clubId);
+        return includedInClubNames.clubName;
+      })
+    );
+
+    // Use Promise.all to handle asynchronous operations inside map
+    const FollwingClubs = await Promise.all(
+      user.followingClubs.map(async (clubId) => {
+        const FollwingClubsNames = await ClubSchema.findById(clubId);
+        return FollwingClubsNames.clubName;
+      })
+    );
     // Send the user data as response, excluding the password field
-    res.status(200).json(user);
+    res.status(200).json({ user, IncludedInClubs,FollwingClubs});
   } catch (error) {
     res.json(error);
   }

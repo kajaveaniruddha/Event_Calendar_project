@@ -8,25 +8,66 @@ const UserSchema = require("../models/userSchema");
 const ClubSchema = require("../models/clubSchema");
 
 //send mail
-var transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "aakajave@gmail.com",
-    pass: "rshzokllqhuuolrh",
-  },
-});
+// var transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: "aakajave@gmail.com",
+//     pass: "rshzokllqhuuolrh",
+//   },
+// });
 
 // routes
 //get all events
 router.get("/allEvents", async (req, res) => {
   try {
-    const allEvents = await EventSchema.find();
+    let allEvents = await EventSchema.find({});
     allEvents.sort((a, b) => {
-      a.startTime > b.startTime;
+      return a.startTime > b.startTime;
     });
 
-    // console.log("error",allEvents);
-    res.status(200).json(allEvents);
+    var ofClubList=[];
+    for(const event of allEvents){
+      try {
+        var ofClubName=await ClubSchema.findById(event.ofClub);
+        ofClubList.push(ofClubName.clubName)
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    var creatorNameList = [];
+    for (const event of allEvents) {
+      try {
+        const creator = await UserSchema.findById(event.creator);
+        creatorNameList.push(creator.name);
+      } catch (error) {
+        // Handle errors, e.g., user not found
+        console.error(
+          `Error fetching creator for event ${event._id}: ${error.message}`
+        );
+      }
+    }
+
+    const organisersNameList = [];
+
+    for (const event of allEvents) {
+      const eventOrganisers = []; // Inner array to store names of organisers for the current event
+      for (const orgi of event.organisers) {
+        try {
+          const organiser = await UserSchema.findById(orgi);
+          eventOrganisers.push(organiser.name);
+        } catch (error) {
+          // Handle errors, e.g., user not found
+          console.error(
+            `Error fetching organiser for event ${event._id}: ${error.message}`
+          );
+        }
+      }
+      organisersNameList.push(eventOrganisers); // Push the inner array to the main array
+    }
+
+    // const mergedData = Object.assign({}, allEvents, creatorNameList, organisersNameList);
+    // console.log(creatorNameList[0]);
+    res.status(200).json({allEvents, creatorNameList, organisersNameList,ofClubList,});
   } catch (error) {
     res.json(error);
   }
@@ -99,10 +140,9 @@ router.put(
       // saving event
       await newEvent.save();
       await EventSchema.findByIdAndUpdate(
-        req.existUser.id,
+        newEvent._id,
         {
           $addToSet: {
-            ofClub: req.params.clubId,
             organisers: req.existUser.id,
           },
         },
@@ -110,7 +150,7 @@ router.put(
       );
 
       const usersUpdated = await UserSchema.findByIdAndUpdate(
-        req.existUser.id,
+        creator._id,
         {
           $addToSet: {
             eventsCreated: newEvent.id,
@@ -119,22 +159,22 @@ router.put(
         { new: true }
       );
       // send mail
-      for (let user in usersUpdated) {
-        var mailOptions = {
-          from: "aakajave@gmail.com",
-          to: `${user.email}`,
-          subject: `"New event from " ${clubExist.clubName}`,
-          text: `${clubExist.clubName} created a new event '\n' Title: ${title}'\n' Descirption: ${description}`,
-        };
+      // for (let user in usersUpdated) {
+      //   var mailOptions = {
+      //     from: "aakajave@gmail.com",
+      //     to: `${user.email}`,
+      //     subject: `"New event from " ${clubExist.clubName}`,
+      //     text: `${clubExist.clubName} created a new event '\n' Title: ${title}'\n' Descirption: ${description}`,
+      //   };
 
-        transporter.sendMail(mailOptions, function (error, info) {
-          if (error) {
-            console.log(error);
-          } else {
-            console.log("Email sent: " + info.response);
-          }
-        });
-      }
+      //   transporter.sendMail(mailOptions, function (error, info) {
+      //     if (error) {
+      //       console.log(error);
+      //     } else {
+      //       console.log("Email sent: " + info.response);
+      //     }
+      //   });
+      // }
 
       res.status(200).json(newEvent);
     } catch (error) {

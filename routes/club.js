@@ -11,8 +11,13 @@ const ClubSchema = require("../models/clubSchema");
 router.get("/allClubs", async (req, res) => {
   try {
     const allClubs = await ClubSchema.find();
+    var creatorsNameList=[]
+    for (const club of allClubs) {
+      const creatorName = await UserSchema.findById(club.creator);
+      creatorsNameList.push(creatorName.name)
+    }
     // console.log("error",allTasks);
-    res.status(200).json(allClubs);
+    res.status(200).json({allClubs, creatorsNameList});
   } catch (error) {
     res.json(error);
   }
